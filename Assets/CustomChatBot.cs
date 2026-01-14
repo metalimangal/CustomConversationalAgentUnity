@@ -88,47 +88,119 @@ namespace Assets
          * Called automatically by Unity when the scene starts.
          * We initialize our chatbot rules here.
          */
+
+
+
+        private List<Rule> CreateDefaultRules()
+        {
+            return new List<Rule>
+                {
+                    new Rule(
+                        new[] { "hello", "hi", "hey" },
+                        "Hello! How can I help you today?"
+                    ),
+
+                    new Rule(
+                        new[] { "serve" },
+                        "For a basic serve: toss the ball slightly in front, reach up, and snap your wrist through contact."
+                    ),
+
+                    new Rule(
+                        new[] { "forehand" },
+                        "For a forehand: turn your shoulders, swing low to high, and follow through across your body."
+                    ),
+
+                    new Rule(
+                        new[] { "backhand" },
+                        "For a backhand: prepare early, keep your non dominant hand guiding, and finish forward."
+                    ),
+
+                    new Rule(
+                        new[] { "score", "scoring" },
+                        "Tennis scoring goes: 15, 30, 40, game. At 40–40 it is deuce."
+                    ),
+
+                    new Rule(
+                        new[] { "help", "what can you do", "commands" },
+                        "Try typing: hello, serve, forehand, backhand, score."
+                    )
+                };
+        }
+
+
+
+
+        private List<Rule> LoadRulesFromCSV(string fileName)
+        {
+            List<Rule> loadedRules = new List<Rule>();
+
+            TextAsset csvFile = Resources.Load<TextAsset>(fileName);
+            if (csvFile == null)
+            {
+                Debug.Log("No CSV rules found, using defaults only.");
+                return loadedRules;
+            }
+
+            string[] lines = csvFile.text.Split('\n');
+
+            for (int i = 1; i < lines.Length; i++)
+            {
+                if (string.IsNullOrWhiteSpace(lines[i])) continue;
+
+                string[] columns = lines[i].Split(',');
+
+                string[] keywords = columns[0].Trim().Split('|');
+                string response = columns[1].Trim();
+
+                loadedRules.Add(new Rule(keywords, response));
+            }
+
+            return loadedRules;
+        }
+
+        private List<Rule> MergeRules(
+            List<Rule> defaultRules,
+            List<Rule> csvRules)
+        {
+            Dictionary<string, Rule> ruleMap = new Dictionary<string, Rule>();
+
+            // Add defaults first
+            foreach (Rule rule in defaultRules)
+            {
+                foreach (string keyword in rule.Keywords)
+                {
+                    ruleMap[keyword.ToLower()] = rule;
+                }
+            }
+
+            // CSV rules override defaults
+            foreach (Rule rule in csvRules)
+            {
+                foreach (string keyword in rule.Keywords)
+                {
+                    ruleMap[keyword.ToLower()] = rule;
+                }
+            }
+
+            // Deduplicate
+            return new List<Rule>(new HashSet<Rule>(ruleMap.Values));
+        }
+
+
+
         private void Start()
         {
-            rules = new List<Rule>
-            {
-                // Greeting rule
-                new Rule(
-                    keywords: new [] { "hello", "hi", "hey" },
-                    response: "Hello! How can I help you today?"
-                ),
+            List<Rule> defaultRules = CreateDefaultRules();
+            List<Rule> csvRules = LoadRulesFromCSV("rules");
 
-                // Tennis related rules
-                new Rule(
-                    keywords: new [] { "serve" },
-                    response: "For a basic serve: toss the ball slightly in front, reach up, and snap your wrist through contact."
-                ),
+            rules = MergeRules(defaultRules, csvRules);
 
-                new Rule(
-                    keywords: new [] { "forehand" },
-                    response: "For a forehand: turn your shoulders, swing low to high, and follow through across your body."
-                ),
-
-                new Rule(
-                    keywords: new [] { "backhand" },
-                    response: "For a backhand: prepare early, keep your non dominant hand guiding, and finish forward."
-                ),
-
-                new Rule(
-                    keywords: new [] { "score", "scoring" },
-                    response: "Tennis scoring goes: 15, 30, 40, game. At 40 40 it is deuce."
-                ),
-
-                // Help rule
-                new Rule(
-                    keywords: new [] { "help", "what can you do", "commands" },
-                    response: "Try typing: hello, serve, forehand, backhand, score."
-                )
-            };
-
-            // Initial bot message when the chat starts
             AddMessage("Bot: Ready. Type a message and press Enter.", MessageType.Bot);
         }
+
+
+
+
 
         /*
          * AddMessage()
